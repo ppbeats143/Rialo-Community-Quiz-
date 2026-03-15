@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RIALO QuizMaster</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #F1E9D2;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: #ffffff;
+            border: 3px solid #000000;
+            border-radius: 20px;
+            box-shadow: 10px 10px 0px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+            padding: 40px;
+        }
+        .header { text-align: center; margin-bottom: 30px; }
+        .logo { color: #000000; font-size: 2.5rem; font-weight: bold; margin-bottom: 10px; }
+        .subtitle { color: #333; font-size: 1.1rem; }
+        .quiz-section { display: none; }
+        .quiz-section.active { display: block; animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .question-counter { text-align: center; margin-bottom: 20px; color: #000000; font-weight: bold; }
+        .progress-bar { height: 10px; background: #e0e0e0; border: 2px solid #000000; border-radius: 5px; margin-bottom: 30px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #000000; width: 0%; transition: width 0.3s ease; }
+        .question { background: #fff; padding: 25px; border-radius: 15px; margin-bottom: 25px; border-left: 8px solid #000000; border-top: 2px solid #000000; border-right: 2px solid #000000; border-bottom: 2px solid #000000; }
+        .question h3 { color: #000000; font-size: 1.2rem; line-height: 1.5; margin-bottom: 20px; }
+        .options { display: grid; gap: 12px; }
+        .option { background: white; border: 2px solid #000000; border-radius: 12px; padding: 15px 20px; cursor: pointer; transition: all 0.2s ease; font-weight: 500; }
+        .option:hover { background-color: #F1E9D2; transform: translateY(-2px); box-shadow: 4px 4px 0px #000000; }
+        .option.correct { border-color: #4CAF50; background-color: rgba(76, 175, 80, 0.1); border-width: 4px; }
+        .option.incorrect { border-color: #f44336; background-color: rgba(244, 67, 54, 0.1); border-width: 4px; }
+        .feedback { margin: 20px 0; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; display: none; border: 2px solid #000000; }
+        .btn { background: #000000; color: #F1E9D2; border: none; padding: 15px 40px; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 10px; }
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .score-circle { width: 150px; height: 150px; border-radius: 50%; margin: 30px auto; display: flex; align-items: center; justify-content: center; flex-direction: column; font-size: 2rem; font-weight: bold; color: #F1E9D2; background: #000000; }
+        .results-breakdown { background: #ffffff; border: 2px solid #000000; border-radius: 15px; padding: 20px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🧠💡 RIALO Quiz</div>
+            <div class="subtitle">Test Your Architecture Knowledge</div>
+        </div>
+
+        <div id="start-screen" class="quiz-section active" style="text-align: center;">
+            <h2 style="margin-bottom: 20px;">Welcome to Rialo Mastery!</h2>
+            <p style="margin-bottom: 30px; line-height: 1.6;">A 10-question challenge on Concurrency, Supermodularity, and the Agent Economy.</p>
+            <button class="btn" onclick="startQuiz()">Start Quiz</button>
+        </div>
+
+        <div id="quiz-screen" class="quiz-section">
+            <div class="question-counter">Question <span id="current-question">1</span> of <span id="total-questions">10</span></div>
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+            <div class="question">
+                <h3 id="question-text"></h3>
+                <div class="options" id="options-container"></div>
+            </div>
+            <div class="feedback" id="feedback"></div>
+            <div style="text-align: center;">
+                <button class="btn" id="next-btn" onclick="nextQuestion()" disabled>Next Question</button>
+            </div>
+        </div>
+
+        <div id="results-screen" class="quiz-section" style="text-align: center;">
+            <h2>Challenge Complete!</h2>
+            <div class="score-circle">
+                <div id="score-percentage">0%</div>
+                <div style="font-size: 0.8rem;">Score</div>
+            </div>
+            <div class="results-breakdown">
+                <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                    <span>Correct Answers:</span> <strong id="correct-count">0</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                    <span>Incorrect Answers:</span> <strong id="incorrect-count">0</strong>
+                </div>
+            </div>
+            <button class="btn" onclick="restartQuiz()">Try Again</button>
+        </div>
+    </div>
+
+    <script>
+        // FIXED DATA: Removed internal double quotes that were breaking the script
+        const quizData = [
+            { question: "What economic phenomenon does Rialo aim to solve by vertically integrating middleware services into the base layer?", options: ["Double (or Compound) Marginalization", "The Tragedy of the Commons", "The Lindy Effect", "The Paradox of Choice"], correct: 0 },
+            { question: "In Rialo's 'Reactive Transactions' model, what is a 'predicate'?", options: ["A fee paid to external bot networks", "A logical expression that determines when a transaction is eligible for execution", "A type of cryptographic signature used for privacy", "A validator who specializes in high-speed consensus"], correct: 1 },
+            { question: "Why does Rialo prefer primary web sources (like federalreserve.gov) over token-vote oracles?", options: ["Primary sources are always faster", "Oracles are technically impossible to build", "It leverages real-world reputation to secure the market", "Primary sources provide free tokens"], correct: 2 },
+            { question: "What happens in 'Optimistic Concurrency Control' when two transactions conflict?", options: ["The blockchain stops processing", "Transactions are permanently deleted", "One transaction is rerun after failing validation", "Transactions are blocked before they start"], correct: 2 },
+            { question: "Which mode results in more transactions being in a 'Waiting' state to prevent conflicts upfront?", options: ["Optimistic Mode", "Sequential-Only Mode", "Reactive Mode", "Pessimistic Mode"], correct: 3 },
+            { question: "What is the main drawback of relying on external 'keepers' for blockchain automation?", options: ["Too decentralized", "Fragmented tower of middleware with independent costs", "Only compatible with Ethereum", "Requires manual signing"], correct: 1 },
+            { question: "In the prediction market security model, an attack becomes rational when:", options: ["Bond cost > payout", "Turnout is > 90%", "(Payouts + Short Profit) > Token Loss", "Market cap hits an ATH"], correct: 2 },
+            { question: "How does 'Stake-for-Service' differ from traditional gas fees?", options: ["Users lock stake rather than paying per-transaction fees", "Users pay in Bitcoin", "Eliminates validators entirely", "Requires watching ads"], correct: 0 },
+            { question: "What concept explains why a $100 balance doesn't accidentally become $150 during parallel execution?", options: ["Double Spending", "Concurrency Control", "Data Indexing", "Proof of Stake"], correct: 1 },
+            { question: "What does 'Supermodularity' refer to in the Rialo ecosystem?", options: ["Breaking blockchain into tiny pieces", "Using multiple programming languages", "Trading modules as NFTs", "Value of components increases when they are integrated"], correct: 3 }
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+        let selectedOption = -1;
+
+        function startQuiz() {
+            document.getElementById('start-screen').classList.remove('active');
+            document.getElementById('quiz-screen').classList.add('active');
+            document.getElementById('total-questions').textContent = quizData.length;
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            if (currentQuestion >= quizData.length) { showResults(); return; }
+            const q = quizData[currentQuestion];
+            document.getElementById('current-question').textContent = currentQuestion + 1;
+            document.getElementById('question-text').textContent = q.question;
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            
+            q.options.forEach((opt, i) => {
+                const el = document.createElement('div');
+                el.className = 'option';
+                el.textContent = opt;
+                el.onclick = () => selectOption(i);
+                container.appendChild(el);
+            });
+
+            document.getElementById('progress-fill').style.width = (currentQuestion / quizData.length * 100) + '%';
+            selectedOption = -1;
+            document.getElementById('next-btn').disabled = true;
+            document.getElementById('feedback').style.display = 'none';
+        }
+
+        function selectOption(index) {
+            if (selectedOption !== -1) return;
+            selectedOption = index;
+            const q = quizData[currentQuestion];
+            const opts = document.querySelectorAll('.option');
+            
+            opts.forEach((opt, i) => {
+                if (i === q.correct) opt.classList.add('correct');
+                else if (i === index) opt.classList.add('incorrect');
+                opt.style.pointerEvents = 'none';
+            });
+
+            const feedback = document.getElementById('feedback');
+            feedback.style.display = 'block';
+            if (index === q.correct) {
+                score++;
+                feedback.textContent = "Correct!";
+                feedback.style.color = "#4CAF50";
+            } else {
+                feedback.textContent = "Incorrect.";
+                feedback.style.color = "#f44336";
+            }
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            loadQuestion();
+        }
+
+        function showResults() {
+            document.getElementById('quiz-screen').classList.remove('active');
+            document.getElementById('results-screen').classList.add('active');
+            const percent = Math.round((score / quizData.length) * 100);
+            document.getElementById('score-percentage').textContent = percent + '%';
+            document.getElementById('correct-count').textContent = score;
+            document.getElementById('incorrect-count').textContent = quizData.length - score;
+        }
+
+        function restartQuiz() {
+            currentQuestion = 0; score = 0;
+            document.getElementById('results-screen').classList.remove('active');
+            document.getElementById('start-screen').classList.add('active');
+        }
+    </script>
+</body>
+</html>
